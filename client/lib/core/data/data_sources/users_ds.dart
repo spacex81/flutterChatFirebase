@@ -1,0 +1,44 @@
+import 'package:client/core/data/data_sources/auth_ds.dart';
+import 'package:client/core/data/models/user_full_model.dart';
+import 'package:client/core/data/models/user_public_model.dart';
+import 'package:client/features/login_and_registration/domain/entities/failures/email_already_exists_failure.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+class UsersDS {
+  final AuthDS authDS;
+
+  CollectionReference get _publicUsersRef =>
+      FirebaseFirestore.instance.collection('users');
+  DocumentReference _fullUserDataRef(String uid) =>
+      _publicUsersRef.doc(uid).collection("fullUser").doc("data");
+
+  UsersDS({required this.authDS});
+
+  Future<void> createUser(
+      {required String firstName,
+      required String lastName,
+      required String email,
+      required String password}) async {
+    try {
+      final res = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: password);
+      await Future.wait([
+        _publicUsersRef.doc(res.user!.uid).set(UserPublicModel(
+                uid: res.user!.uid, firstName: firstName, lastName: lastName)
+            .toMap()),
+        _fullUserDataRef(res.user!.uid).set(UserFullModel(
+                uid: res.user!.uid,
+                firstName: firstName,
+                lastName: lastName,
+                fcmToken: null)
+            .toMap())
+      ]);
+    } catch (e) {
+      if (e is FirebaseAuthException && e.code == 'email-already-in-use') {
+        throw EmailAlreadyExistsFailure();
+      }
+      rethrow;
+    }
+  }
+}
