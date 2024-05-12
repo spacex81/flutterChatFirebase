@@ -6,8 +6,8 @@ const double _height = 50;
 const double _leftIconSize = 28;
 const double _leftIconPaddingSize = 2;
 
-class MyAppbarWidget extends PreferredSize {
-  MyAppbarWidget(
+class MyAppBarWidget extends PreferredSize {
+  MyAppBarWidget(
       {super.key,
       required BuildContext context,
       Widget? child,

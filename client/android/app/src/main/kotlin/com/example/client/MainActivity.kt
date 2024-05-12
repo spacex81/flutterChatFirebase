@@ -1,4 +1,4 @@
-package com.example.client
+package com.komaki.app
 
 import io.flutter.embedding.android.FlutterActivity
 

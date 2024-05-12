@@ -1,4 +1,6 @@
-import '../../../features/chat/chat_utils.dart' as chatUtils;
+import 'package:client/core/domain/services/auth_service.dart';
+import 'package:client/injection_container.dart';
+import '../../../features/chat/domain/chat_utils.dart' as chatUtils;
 
 class UserPublic {
   final String uid;
@@ -10,5 +12,10 @@ class UserPublic {
 
   String get fullName => "$firstName $lastName";
 
-  // String get
+  String get conversationId {
+    return chatUtils
+        .getDirectConversationId([uid, getIt.get<AuthService>().loggedUid!]);
+  }
+
+  static UserPublic empty() => UserPublic(uid: '', firstName: '', lastName: '');
 }

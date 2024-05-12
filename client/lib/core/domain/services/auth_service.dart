@@ -37,4 +37,8 @@ class AuthService {
   }
 
   String? get loggedUid => authDS.loggedUid;
+
+  void removeOnSignOutListener(void Function() listener) {
+    authDS.removeOnSignOutListener(listener);
+  }
 }

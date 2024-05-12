@@ -73,7 +73,7 @@ class Message {
   }
 
   // Returns if the logged user has received this message
-  bool get isReceived {
+  bool get iReceived {
     assert(senderUid != getIt.get<AuthService>().loggedUid,
         'This message was sent by the logged user');
     return receivedAt[getIt.get<AuthService>().loggedUid] != null;

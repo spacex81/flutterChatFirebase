@@ -18,13 +18,13 @@ import '../../widgets/separator.dart';
 class LoginContent extends StatefulWidget
     implements LoginAndRegistrationContent {
   late final ValueNotifier<String?> notifyError;
-  final GoToLoginCallback gotoLogin;
+  final GoToLoginCallback goToLogin;
   final String? email;
 
   LoginContent({
     Key? key,
     ValueNotifier<String?>? notifyError,
-    required this.gotoLogin,
+    required this.goToLogin,
     this.email,
   }) : super(key: key) {
     this.notifyError = notifyError ?? ValueNotifier<String?>(null);
@@ -39,7 +39,7 @@ class LoginContent extends StatefulWidget
   @override
   LoginAndRegistrationContent get nextContent => RegisterContent(
         notifyError: notifyError,
-        goToLogin: gotoLogin,
+        goToLogin: goToLogin,
       );
 }
 
@@ -61,79 +61,82 @@ class _LoginContentState extends State<LoginContent> {
     notifyEmailError.dispose();
     notifyPasswordError.dispose();
     notifySuccess.dispose();
+    emailController.dispose();
+    passwordController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Form(
-        key: loginFormKey,
-        child: Column(
-          children: [
-            MyCustomTextFormField(
-              controller: emailController,
-              hintText: 'Your email',
-              validator: validateEmail,
-              keyboardType: TextInputType.emailAddress,
-              notifyError: notifyEmailError,
-              prefixIcon: MyAnimatedIcon(
+      key: loginFormKey,
+      child: Column(
+        children: [
+          MyCustomTextFormField(
+            controller: emailController,
+            hintText: 'Your email',
+            validator: validateEmail,
+            keyboardType: TextInputType.emailAddress,
+            notifyError: notifyEmailError,
+            prefixIcon: MyAnimatedIcon(
                 icon: Icons.email_rounded,
                 notifySuccess: notifySuccess,
-                notifyError: notifyEmailError,
-              ),
-            ),
-            separator,
-            MyCustomTextFormField(
-              controller: passwordController,
-              hintText: 'Your password',
-              validator: validateRequired,
-              obscureText: true,
-              notifyError: notifyPasswordError,
-              keyboardType: TextInputType.text,
-              prefixIcon: MyAnimatedIcon(
+                notifyError: notifyEmailError),
+          ),
+          separator,
+          MyCustomTextFormField(
+            controller: passwordController,
+            hintText: 'Your password',
+            validator: validateRequired,
+            obscureText: true,
+            notifyError: notifyPasswordError,
+            keyboardType: TextInputType.text,
+            prefixIcon: MyAnimatedIcon(
                 icon: Icons.key,
                 notifySuccess: notifySuccess,
-                notifyError: notifyPasswordError,
-              ),
-            ),
-            separator,
-            ValueListenableBuilder(
-                valueListenable: notifyIsLoading,
-                builder: (__, isLoading, _) {
-                  return ValueListenableBuilder(
-                      valueListenable: notifySuccess,
-                      builder: (__, success, _) {
-                        return ButtonWidget(
-                          text: success ? "SUCCESS" : "LOGIN",
-                          icon: success ? Icons.check : null,
-                          isLoading: isLoading && !success,
-                          onPressed: success
-                              ? null
-                              : () {
-                                  FocusManager.instance.primaryFocus?.unfocus();
-                                  widget.notifyError.value = null;
-                                  notifyEmailError.value =
-                                      notifyPasswordError.value = null;
+                notifyError: notifyPasswordError),
+          ),
+          separator,
+          ValueListenableBuilder(
+            valueListenable: notifyIsLoading,
+            builder: (__, isLoading, _) {
+              return ValueListenableBuilder(
+                  valueListenable: notifySuccess,
+                  builder: (__, success, _) {
+                    return ButtonWidget(
+                        text: success ? "SUCCESS" : "LOGIN",
+                        icon: success ? Icons.check : null,
+                        isLoading: isLoading && !success,
+                        onPressed: success
+                            ? null
+                            : () {
+                                FocusManager.instance.primaryFocus?.unfocus();
+                                widget.notifyError.value = null;
+                                notifyEmailError.value =
+                                    notifyPasswordError.value = null;
 
-                                  if (loginFormKey.currentState!.validate()) {
-                                    loginFormKey.currentState!.save();
-                                    notifyIsLoading.value = true;
-                                    getIt<AuthService>()
-                                        .signInWithEmailAndPassword(
-                                            email: emailController.text,
-                                            password: passwordController.text)
-                                        .then((res) {
-                                      notifyIsLoading.value = false;
-                                      res.fold(loginFailed,
-                                          (_) => loginSuccessfully(context));
-                                    });
-                                  }
-                                },
-                        );
-                      });
-                }),
-          ],
-        ));
+                                if (loginFormKey.currentState!.validate()) {
+                                  loginFormKey.currentState!.save();
+                                  notifyIsLoading.value = true;
+
+                                  getIt<AuthService>()
+                                      .signInWithEmailAndPassword(
+                                    email: emailController.text,
+                                    password: passwordController.text,
+                                  )
+                                      .then((res) {
+                                    notifyIsLoading.value = false;
+                                    res.fold(loginFailed,
+                                        (_) => loginSuccessfully(context));
+                                  });
+                                }
+                              });
+                  });
+            },
+          )
+        ],
+      ),
+    );
   }
 
   void loginFailed(Failure failure) {
@@ -152,7 +155,7 @@ class _LoginContentState extends State<LoginContent> {
     Future.delayed(const Duration(milliseconds: 850), () {
       Navigator.of(context).pushNamedAndRemoveUntil(
           ScreenRoutes.conversations, (route) => false);
-      //getIt.get<NotificationsService>().start();
+      // getIt.get<NotificationsService>().start();
     });
   }
 }

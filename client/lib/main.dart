@@ -13,6 +13,8 @@ const double kMargin = 16.0;
 const double kPageContentWidth = 600;
 const double kIconSize = 24.0;
 
+final navigatorKey = GlobalKey<NavigatorState>();
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -28,6 +30,7 @@ class MyApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             initialRoute: ScreenRoutes.loading,
             routes: screenRoutes,
+            navigatorKey: navigatorKey,
             theme: ThemeData(
               primarySwatch: Colors.indigo,
               fontFamily: 'RedHatDisplay',

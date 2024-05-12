@@ -1,7 +1,10 @@
 import 'package:client/core/data/data_sources/auth_ds.dart';
 import 'package:client/core/data/models/user_full_model.dart';
 import 'package:client/core/data/models/user_public_model.dart';
+import 'package:client/core/domain/entities/user_public.dart';
+import 'package:client/core/domain/services/auth_service.dart';
 import 'package:client/features/login_and_registration/domain/entities/failures/email_already_exists_failure.dart';
+import 'package:client/injection_container.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -14,6 +17,16 @@ class UsersDS {
       _publicUsersRef.doc(uid).collection("fullUser").doc("data");
 
   UsersDS({required this.authDS});
+
+  Stream<List<UserPublicModel>> streamAllUsersExceptLogged() {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .where(UserPublicModel.kUid,
+            isNotEqualTo: getIt.get<AuthService>().loggedUid)
+        .snapshots()
+        .map((snapshot) => UserPublicModel.fromList(
+            snapshot.docs.map((e) => e.data()).toList()));
+  }
 
   Future<void> createUser(
       {required String firstName,
@@ -40,5 +53,14 @@ class UsersDS {
       }
       rethrow;
     }
+  }
+
+  Future<UserPublic?> getPublicUser({required String uid}) async {
+    print("getPublicUser: ${uid}");
+    final user = await _publicUsersRef.doc(uid).get();
+    if (!user.exists) {
+      return null;
+    }
+    return UserPublicModel.fromMap(user.data());
   }
 }

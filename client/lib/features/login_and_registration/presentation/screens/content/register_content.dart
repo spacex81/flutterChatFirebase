@@ -31,7 +31,7 @@ class RegisterContent extends StatefulWidget
   @override
   LoginAndRegistrationContent get nextContent => LoginContent(
         notifyError: notifyError,
-        gotoLogin: goToLogin,
+        goToLogin: goToLogin,
       );
 }
 
@@ -123,41 +123,41 @@ class _RegisterContentState extends State<RegisterContent> {
           ),
           separator,
           ValueListenableBuilder(
-            valueListenable: notifyIsLoading,
-            builder: (context, isLoading, _) => ValueListenableBuilder(
-                valueListenable: notifySuccess,
-                builder: (context, success, __) => ButtonWidget(
-                    text: success ? "SUCCESS" : "REGISTER",
-                    icon: success ? Icons.check : null,
-                    isLoading: notifyIsLoading.value,
-                    onPressed: success
-                        ? null
-                        : () {
-                            widget.notifyError.value = null;
+              valueListenable: notifyIsLoading,
+              builder: (context, isLoading, _) => ValueListenableBuilder(
+                  valueListenable: notifySuccess,
+                  builder: (context, success, __) => ButtonWidget(
+                      text: success ? "SUCCESS" : "REGISTER",
+                      icon: success ? Icons.check : null,
+                      isLoading: notifyIsLoading.value,
+                      onPressed: success
+                          ? null
+                          : () {
+                              widget.notifyError.value = null;
 
-                            if (password1Controller.text !=
-                                password2Controller.text) {
-                              notifyInvalidPassword2.value =
-                                  "The passwords doesn't match";
-                              return;
-                            }
+                              if (password1Controller.text !=
+                                  password2Controller.text) {
+                                notifyInvalidPassword2.value =
+                                    "The passwords doesn't match";
+                                return;
+                              }
 
-                            if (registerFormKey.currentState!.validate()) {
-                              notifyIsLoading.value = true;
-                              getIt<UsersService>()
-                                  .createUser(
-                                      email: emailController.text,
-                                      firstName: firstNameController.text,
-                                      lastName: lastNameController.text,
-                                      password: password1Controller.text)
-                                  .then((res) {
-                                notifyIsLoading.value = false;
-                                res.fold(registerFailed,
-                                    (_) => registeredSuccessfully(context));
-                              });
-                            }
-                          })),
-          ),
+                              if (registerFormKey.currentState!.validate()) {
+                                notifyIsLoading.value = true;
+                                getIt<UsersService>()
+                                    .createUser(
+                                  email: emailController.text,
+                                  firstName: firstNameController.text,
+                                  lastName: lastNameController.text,
+                                  password: password1Controller.text,
+                                )
+                                    .then((res) {
+                                  notifyIsLoading.value = false;
+                                  res.fold(registerFailed,
+                                      (_) => registeredSuccessfully(context));
+                                });
+                              }
+                            }))),
         ],
       ),
     );
@@ -165,7 +165,8 @@ class _RegisterContentState extends State<RegisterContent> {
 
   void registerFailed(Failure failure) {
     if (failure is EmailAlreadyExistsFailure) {
-      notifyInvalidEmail.value = failure.error;
+      notifyInvalidEmail.value = failure
+          .error; //Email is already in use, please, try to login into your account
     } else {
       widget.notifyError.value = failure.error;
     }
