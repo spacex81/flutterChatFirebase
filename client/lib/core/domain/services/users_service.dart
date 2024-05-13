@@ -37,4 +37,8 @@ class UsersService {
   Future<UserPublic?> getUser({required String uid}) {
     return usersRemoteDataSource.getPublicUser(uid: uid);
   }
+
+  Stream<UserPublic> streamPublicUser({required String uid}) {
+    return usersRemoteDataSource.streamPublicUser(uid: uid);
+  }
 }

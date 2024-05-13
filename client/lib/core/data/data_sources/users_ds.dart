@@ -56,11 +56,17 @@ class UsersDS {
   }
 
   Future<UserPublic?> getPublicUser({required String uid}) async {
-    print("getPublicUser: ${uid}");
     final user = await _publicUsersRef.doc(uid).get();
     if (!user.exists) {
       return null;
     }
     return UserPublicModel.fromMap(user.data());
+  }
+
+  Stream<UserPublic> streamPublicUser({required String uid}) {
+    return _publicUsersRef
+        .doc(uid)
+        .snapshots()
+        .map((data) => UserPublicModel.fromMap(data.data()));
   }
 }

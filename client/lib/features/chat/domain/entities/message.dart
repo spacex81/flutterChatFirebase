@@ -80,7 +80,7 @@ class Message {
   }
 
   // Returns if the logged user has read this mssage
-  bool get isRead {
+  bool get iRead {
     assert(senderUid != getIt.get<AuthService>().loggedUid,
         'This message was sent by the logged user');
     return readAt[getIt.get<AuthService>().loggedUid] != null;

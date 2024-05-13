@@ -1,3 +1,4 @@
+import 'package:client/features/chat/presentation/screens/realtime_chat_screen/realtime_chat_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -93,14 +94,14 @@ class ConversationItem extends StatelessWidget {
             ),
           ),
           child: InkWell(
-            // onTap: onTap ??
-            //     () {
-            //       assert(conversationId != null, 'Please, provide onTap');
-            //       Navigator.of(context).pushNamed(ScreenRoutes.chat,
-            //           arguments: RealtimeChatScreenArgs(
-            //               conversationId: conversationId!,
-            //               uidForDirectConversation: uidForDirectConversation));
-            //     },
+            onTap: onTap ??
+                () {
+                  assert(conversationId != null, 'Please, provide onTap');
+                  Navigator.of(context).pushNamed(ScreenRoutes.chat,
+                      arguments: RealtimeChatScreenArgs(
+                          conversationId: conversationId!,
+                          uidForDirectConversation: uidForDirectConversation));
+                },
             child: Ink(
                 child: Stack(
               clipBehavior: Clip.none,

@@ -14,27 +14,25 @@ class TypingDS {
       _subscriptionByConversationId = {};
   final Map<String, List<void Function(List<String> typingUids)>>
       _listenersByConversationId = {};
-  // TypingDS will defined active, when the listeners are added
   bool _active = false;
 
-  /// for each conversation, store each user's timestamp of their latest type
   /// - Key: conversationId
   /// - Value: Map of:
   /// --- Key: uid
   /// --- Value: Timestamp the user typed at
   final Map<String, Map<String, Timestamp>> _cancelTyping = {};
 
-  // for each conversation, stores the currently typing users
   final Map<String, List<String>> _typingUidsByConversationId = {};
   final List<void Function()> _onCloseListeners = [];
 
-  TypingDS({required this.firestore, required this.authService});
+  TypingDS({
+    required this.firestore,
+    required this.authService,
+  });
 
-  List<String> typingUids(String conversationUid) =>
-      _typingUidsByConversationId[conversationUid] ?? [];
+  List<String> typingUids(String conversationId) =>
+      _typingUidsByConversationId[conversationId] ?? [];
 
-  /// if conversationId is not null, trigger all the listeners that is allocated to that conversationId
-  /// it conversationId is null, trigger all the listeners for all the conversationIds
   _triggerListeners({String? conversationId}) {
     if (_active) {
       for (final cId in (conversationId != null
@@ -53,39 +51,34 @@ class TypingDS {
       {required String conversationId,
       required RefreshTypingListener listener}) {
     _active = true;
-
-    // add listener to certain conversation
     _listenersByConversationId[conversationId] ??= [];
     _listenersByConversationId[conversationId]!.add(listener);
-    // trigger conversation listener if we are already subscribing to this conversation
     if (_subscriptionByConversationId[conversationId] != null) {
       _triggerListeners(conversationId: conversationId);
       return listener;
     }
-    // subscribe to conversation using conversation id
     _subscriptionByConversationId[conversationId] =
         _ref(conversationId).snapshots().listen((event) {
       final List<String> typingUids = [];
 
-      final typedAtUid = _convertDocsToTypedAtObject(event);
-      print('typedAtUid');
-      print(typedAtUid);
+      final typedAtByUid = _convertDocsToTypedAtObject(event);
+      print("typedAtByUid");
+      print(typedAtByUid);
       for (final String uid
-          in List<String>.from(typedAtUid.entries.map((e) => e.key))) {
-        // last time certain user has typed
-        final DateTime typedAt = typedAtUid[uid]!.toDate();
-        typedAtUid.remove(uid);
+          in List<String>.from(typedAtByUid.entries.map((e) => e.key))) {
+        final DateTime typedAt = typedAtByUid[uid]!.toDate();
+        typedAtByUid.remove(uid); // in case the device's clock is not exact
         final cancelTypingByUid = _cancelTyping[conversationId] ??= {};
-        // if last time certain user has typed is not past the deadline, keep that user's typing status active
         if (cancelTypingByUid[uid] != null &&
             cancelTypingByUid[uid]!.millisecondsSinceEpoch >
                 typedAt.millisecondsSinceEpoch) {
           continue;
         }
-        // if user's timestamp has past the deadline, remove that uid from the list
         cancelTypingByUid.remove(uid);
-        const incorrectDevicesClock = 8 * 1000;
-        if (DateTime.now().millisecondsSinceEpoch <=
+        const incorrectDevicesClock =
+            8 * 1000; // in case the devices clock is not exact
+        if (DateTime.now().millisecondsSinceEpoch -
+                typedAt.millisecondsSinceEpoch <=
             (kTypingDurationMs + incorrectDevicesClock)) {
           typingUids.add(uid);
         }
@@ -102,7 +95,6 @@ class TypingDS {
     for (final conversationId in _listenersByConversationId.keys) {
       final removed =
           (_listenersByConversationId[conversationId] ?? []).remove(listener);
-      // if the last listener is removed and the list of listeners is empty, cancel everything
       if (removed && _listenersByConversationId[conversationId]!.isEmpty) {
         _subscriptionByConversationId[conversationId]!.cancel();
         _subscriptionByConversationId.remove(conversationId);
@@ -123,9 +115,23 @@ class TypingDS {
           (_typingUidsByConversationId[conversationId] ?? [])
               .where((value) => value != uid)
               .toList();
-
       _triggerListeners(conversationId: conversationId);
     }
+  }
+
+  void close() {
+    _active = false;
+    for (final subscription in _subscriptionByConversationId.values) {
+      subscription.cancel();
+    }
+    _subscriptionByConversationId.clear();
+    _typingUidsByConversationId.clear();
+    _listenersByConversationId.clear();
+    for (final listener in _onCloseListeners) {
+      listener();
+    }
+    _onCloseListeners.clear();
+    _cancelTyping.clear();
   }
 
   CollectionReference<Map<String, dynamic>> _ref(String conversationId) {
@@ -135,11 +141,36 @@ class TypingDS {
         .collection("typing");
   }
 
-  // returns the list of 'typedAt' information except the current user
+  int? _lastTimeITyped;
+  Future<void> updateImTyping(String conversationId) async {
+    assert(authService.loggedUid != null, "current user is not logged in");
+
+    final docRef = _ref(conversationId).doc(authService.loggedUid!);
+    await docRef.set({
+      "typedAt": FieldValue.serverTimestamp(),
+      "uid": authService.loggedUid!,
+    });
+
+    final typedAt = _lastTimeITyped = DateTime.now().millisecondsSinceEpoch;
+    Future.delayed(const Duration(milliseconds: kTypingDurationMs), () {
+      if (_lastTimeITyped == typedAt) {
+        docRef.delete();
+      }
+    });
+  }
+
+  void addOnCloseListener(void Function() listener) {
+    if (_active) {
+      _onCloseListeners.add(listener);
+    } else {
+      listener();
+    }
+  }
+
   Map<String, Timestamp> _convertDocsToTypedAtObject(
       QuerySnapshot<Map<String, dynamic>> event) {
     final Map<String, Timestamp> res = {};
-    for (final QueryDocumentSnapshot<Map<String, dynamic>> document
+    for (final document
         in event.docs.where((element) => element.id != authService.loggedUid)) {
       res[document.id] = document.data()["typedAt"];
     }

@@ -1,7 +1,9 @@
+import 'package:client/core/utils/model_utils.dart';
 import 'package:client/features/chat/domain/entities/message.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MessageFirestoreModel extends Message {
+  /// Field names:
   static const String kConversationId = "conversationId";
   static const String kMessageId = "messageId";
   static const String kText = "text";
@@ -45,28 +47,18 @@ class MessageFirestoreModel extends Message {
   static MessageFirestoreModel fromMap(map, bool hasPendingWrites) {
     assert(map is Map);
     return MessageFirestoreModel(
-        conversationId: map[kConversationId],
-        messageId: map[kMessageId],
-        text: map[kText],
-        senderUid: map[kSenderUid],
-        sentAt: map[kSentAt],
-        participants: map[kParticipants]);
-  }
-
-  Map<String, dynamic> toMap() {
-    assert(participants.isNotEmpty);
-    return {
-      kMessageId: messageId,
-      kConversationId: conversationId,
-      kText: text,
-      kSentAt: sentAt,
-      kSenderUid: senderUid,
-      kParticipants: participants,
-      kReceivedAt: receivedAt,
-      kReadAt: readAt,
-      kPendingRead: pendingRead,
-      kPendingReceivement: pendingReceivement,
-    };
+      conversationId: map[kConversationId],
+      receivedAt: fromMapOfTimestamp(map[kReceivedAt] ?? const {})!,
+      readAt: fromMapOfTimestamp(map[kReadAt] ?? const {})!,
+      hasPendingWrites: hasPendingWrites,
+      messageId: map[kMessageId],
+      text: map[kText],
+      participants: List.from(map[kParticipants]),
+      senderUid: map[kSenderUid],
+      sentAt: (map[kSentAt] as Timestamp).toDate(),
+      pendingRead: List<String>.from(map[kPendingRead] ?? []),
+      pendingReceivement: List<String>.from(map[kPendingReceivement] ?? []),
+    );
   }
 
   MessageFirestoreModel.fromEntity(Message e)
@@ -83,4 +75,20 @@ class MessageFirestoreModel extends Message {
           pendingRead: e.pendingRead,
           pendingReceivement: e.pendingReceivement,
         );
+
+  Map<String, dynamic> toMap() {
+    assert(participants.isNotEmpty);
+    return {
+      kMessageId: messageId,
+      kConversationId: conversationId,
+      kText: text,
+      kSentAt: sentAt,
+      kSenderUid: senderUid,
+      kParticipants: participants,
+      kReceivedAt: receivedAt,
+      kReadAt: readAt,
+      kPendingRead: pendingRead,
+      kPendingReceivement: pendingReceivement,
+    };
+  }
 }

@@ -3,6 +3,7 @@ import 'package:client/core/domain/services/users_service.dart';
 import 'package:client/features/chat/data/data_sources/messages_ds.dart';
 import 'package:client/features/chat/domain/entities/conversation.dart';
 import 'package:client/features/chat/domain/entities/message.dart';
+import 'package:client/features/chat/domain/entities/sending_text_message_entity.dart';
 
 class MessagesService {
   final MessagesDS messagesDatasource;
@@ -23,6 +24,20 @@ class MessagesService {
     return messagesDatasource.conversationListStream();
   }
 
+  Future<void> updateImTyping({required String conversationId}) {
+    return messagesDatasource.updateImTyping(conversationId: conversationId);
+  }
+
+  Future<void> updateMessageToRead(
+      {required String conversationId, required String messageId}) {
+    return messagesDatasource.updateMessageToRead(
+        conversationId: conversationId, messageId: messageId);
+  }
+
+  void newMessage({required SendingMessageEntity message}) {
+    messagesDatasource.addMessage(message: message);
+  }
+
   Stream<List<Message>> messagesStream(
       {required String conversationId,
       int? limitToLast,
@@ -32,6 +47,17 @@ class MessagesService {
         conversationId: conversationId,
         limit: limitToLast,
         onNewReceivedMessage: onNewReceivedMessage);
+  }
+
+  Stream<int> pendingReadMessagesAmount({required String conversationId}) {
+    return messagesDatasource.pendingReadMessagesAmount(
+        conversationId: conversationId);
+  }
+
+  Future<String> createConversationIfDoesntExists(
+      {required String uidForDirectConversation}) {
+    return messagesDatasource.createConversationIfDoesntExists(
+        uidForDirectConversation: uidForDirectConversation);
   }
 
   Future<Conversation?> getConversationById({required String conversationId}) {

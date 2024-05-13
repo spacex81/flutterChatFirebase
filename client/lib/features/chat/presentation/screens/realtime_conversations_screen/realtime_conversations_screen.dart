@@ -1,12 +1,15 @@
 import 'dart:developer';
 import 'dart:math' as math;
 
+import 'package:client/core/presentation/widgets/button_widget.dart';
 import 'package:client/core/presentation/widgets/expanded_section_widget.dart';
 import 'package:client/core/presentation/widgets/my_appbar_widget.dart';
+import 'package:client/core/presentation/widgets/my_multiline_text_field.dart';
 import 'package:client/core/presentation/widgets/my_scaffold.dart';
 import 'package:client/features/chat/domain/entities/detailed_conversation.dart';
 import 'package:client/features/chat/presentation/controllers/detailed_conversation_controller.dart';
 import 'package:client/features/chat/presentation/controllers/detailed_conversation_list_controller.dart';
+import 'package:client/features/chat/presentation/controllers/signout_controller.dart';
 import 'package:client/features/chat/presentation/controllers/users_to_talk_to_controller.dart';
 import 'package:client/features/chat/presentation/widgets/conversation_item.dart';
 import 'package:client/features/chat/presentation/widgets/logout_button_widget.dart';
@@ -19,7 +22,7 @@ import 'package:flutter/material.dart';
 class RealtimeConversationsScreen extends StatefulWidget {
   static const String route = '/conversations';
 
-  const RealtimeConversationsScreen({super.key});
+  const RealtimeConversationsScreen({Key? key}) : super(key: key);
 
   @override
   State<RealtimeConversationsScreen> createState() =>
@@ -31,10 +34,33 @@ class _RealtimeConversationsScreenState
   final detailedConversationsController =
       DetailedConversationListController(messagesLimitForEachConversation: 1);
   final TextEditingController searchController = TextEditingController();
-  final usersToTalkToController = UsersToTalkToController();
+  final signOutController = SignOutController();
+
+  _RealtimeConversationsScreenState() : super();
 
   bool startedConversationsIsExpanded = true;
   bool allContactsIsExpanded = true;
+
+  final usersToTalkToController = UsersToTalkToController();
+
+  void _clearText() {
+    setState(() {
+      searchController.text = '';
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      searchController.addListener(() {
+        setState(() {
+          startedConversationsIsExpanded = allContactsIsExpanded = true;
+        });
+      });
+    });
+  }
 
   @override
   void dispose() {
@@ -45,6 +71,7 @@ class _RealtimeConversationsScreenState
 
   @override
   Widget build(BuildContext context) {
+    // final double contentHeight = MediaQuery.of(context).size.height - 82;
     final double contentHeight = MediaQuery.of(context).size.height - 105;
 
     return MyScaffold(
@@ -52,18 +79,46 @@ class _RealtimeConversationsScreenState
       appBar: MyAppBarWidget(
         context: context,
         withBackground: true,
+        // child: Text('Conversations', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: kPageContentWidth),
           child: Row(
             children: [
               Expanded(
-                child: Placeholder(),
+                child: MyMultilineTextField(
+                  hintText: 'Search for conversations',
+                  controller: searchController,
+                  fillColor: Colors.blue[800],
+                  maxLines: 1,
+                  suffixIcon: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    transitionBuilder:
+                        (Widget child, Animation<double> animation) {
+                      return ScaleTransition(scale: animation, child: child);
+                    },
+                    child: searchController.text.isEmpty
+                        ? Icon(Icons.search_rounded,
+                            color: Colors.blue[900]!, size: 27)
+                        : InkWell(
+                            onTap: _clearText,
+                            child: Ink(
+                              child: const Icon(
+                                Icons.clear_rounded,
+                                color: Colors.white,
+                                size: 27,
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(
+                width: 10,
+              ),
               Padding(
                 padding: const EdgeInsets.only(top: 3),
                 child: SignOutButtonWidget(),
-              )
+              ),
             ],
           ),
         ),
@@ -79,75 +134,88 @@ class _RealtimeConversationsScreenState
             clipBehavior: Clip.none,
             child: Column(
               children: [
+                // Conversations
                 StreamBuilder(
-                    stream: detailedConversationsController.stream,
-                    builder: (context, conversationsSnapshot) {
-                      if (conversationsSnapshot.hasError) {
-                        log("An error occurred on ListenToConversationsWithMessages: ${conversationsSnapshot.error ?? "null"}");
-                        return Container();
-                      }
-                      if (!conversationsSnapshot.hasData ||
-                          conversationsSnapshot.data!.isEmpty) {
-                        return Container();
-                      }
-                      final conversations =
-                          filteredConversations(conversationsSnapshot.data!);
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _Subtitle(
+                  stream: detailedConversationsController.stream,
+                  builder: (context, conversationsSnapshot) {
+                    if (conversationsSnapshot.hasError) {
+                      log("An error occurred on ListenToConversationsWithMessages: ${conversationsSnapshot.error ?? "null"}");
+                      return Container();
+                    }
+                    if (!conversationsSnapshot.hasData ||
+                        conversationsSnapshot.data!.isEmpty) {
+                      return Container();
+                    }
+                    final conversations =
+                        filteredConversations(conversationsSnapshot.data!);
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _Subtitle(
                             title:
-                                'Conversations(${conversations.length.toString()})',
+                                'Conversations (${conversations.length.toString()})',
                             isExpanded: startedConversationsIsExpanded,
                             toggleExpand: (expand) {
                               setState(() {
                                 startedConversationsIsExpanded = expand;
                               });
-                            },
-                          ),
-                          ExpandedSection(
-                            expand: startedConversationsIsExpanded,
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.only(top: 7, bottom: 10),
-                              child: Column(
-                                  children: conversations
-                                      .mapIndexed((index, conversation) =>
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                vertical: 8),
-                                            child: ConversationItem(
-                                              conversationId:
-                                                  conversation.conversationId,
-                                              isGroup: conversation.isGroup,
-                                              uidForDirectConversation:
-                                                  conversation
-                                                      .uidForDirectConversation,
-                                              title: conversation.title,
-                                              lastMessage: conversation
-                                                  .messages.lastOrNull,
-                                              typingUsers:
-                                                  conversation.typingUsers,
-                                              removeConversationCallback: () {
-                                                detailedConversationsController
-                                                    .exitConversation(
-                                                        conversationId:
-                                                            conversation
-                                                                .conversationId);
-                                              },
-                                            ),
-                                          ))
-                                      .toList()),
+                            }),
+                        ExpandedSection(
+                          expand: startedConversationsIsExpanded,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 7, bottom: 10),
+                            child: Column(
+                              children: conversations
+                                  .mapIndexed((index, conversation) => Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 8),
+                                        child: ConversationItem(
+                                          conversationId:
+                                              conversation.conversationId,
+                                          isGroup: conversation.isGroup,
+                                          uidForDirectConversation: conversation
+                                              .uidForDirectConversation,
+                                          title: conversation.title,
+                                          lastMessage:
+                                              conversation.messages.lastOrNull,
+                                          typingUsers: conversation.typingUsers,
+                                          removeConversationCallback: () {
+                                            detailedConversationsController
+                                                .exitConversation(
+                                                    conversationId: conversation
+                                                        .conversationId);
+                                          },
+                                        ),
+                                      ))
+                                  .toList(),
                             ),
-                          )
-                        ],
-                      );
-                    }),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                if (!startedConversationsIsExpanded)
+                  const SizedBox(
+                    height: 15,
+                  ),
+                // Contacts
                 StreamBuilder(
                   stream: usersToTalkToController.stream(),
                   builder: (context, snapshotContacts) {
                     if (snapshotContacts.hasError) {
                       log("An error occurred on FutureBuilder ReadAllContacts: ${snapshotContacts.error ?? "null"} ${snapshotContacts.data ?? "null"}");
+                      return SizedBox(
+                        height: contentHeight,
+                        child: const Center(
+                          child: Text(
+                              "An error occurred. Please try again later",
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                      );
                     }
                     if (!snapshotContacts.hasData) {
                       return SizedBox(
@@ -163,6 +231,57 @@ class _RealtimeConversationsScreenState
                         ("${element.firstName} ${element.lastName}")
                             .toLowerCase()
                             .contains(searchController.text.toLowerCase()));
+
+                    if (contacts.isEmpty &&
+                        !detailedConversationsController.hasData) {
+                      return SizedBox(
+                          height: contentHeight,
+                          child: Column(
+                            mainAxisAlignment: searchController.text.isEmpty
+                                ? MainAxisAlignment.center
+                                : MainAxisAlignment.start,
+                            children: [
+                              Icon(Icons.supervised_user_circle,
+                                  color: Colors.white.withOpacity(.5),
+                                  size: 80),
+                              SizedBox(
+                                height: 10,
+                              ),
+                              const Text(
+                                "No conversation",
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 18),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(
+                                height: 10,
+                              ),
+                              Text(
+                                searchController.text.isEmpty
+                                    ? "Create another account and start playing :)"
+                                    : "No conversation matches the filter",
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 15),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(
+                                height: 22,
+                              ),
+                              ButtonWidget(
+                                text: 'LOGOUT',
+                                isSmall: true,
+                                width: 150,
+                                onPressed: () {
+                                  signOutController.signOut(context);
+                                },
+                              )
+                            ],
+                          ));
+                    }
                     return Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,39 +323,38 @@ class _RealtimeConversationsScreenState
                       ],
                     );
                   },
-                ),
+                )
               ],
             ),
           ),
         ],
       ),
       floatingActionButton: StreamBuilder(
-        stream: usersToTalkToController.stream(),
-        builder: (context, snapshot) {
-          return Padding(
-            padding: EdgeInsets.only(
-                right: math.max(
-                    0,
-                    (MediaQuery.of(context).size.width - kPageContentWidth) /
-                        2)),
-            child: Visibility(
-              visible: snapshot.data?.isNotEmpty == true,
-              child: FloatingActionButton.extended(
-                onPressed: () {
-                  Navigator.of(context).pushNamed(
-                      ScreenRoutes.createGroupOrEditTitle,
-                      arguments: CreateGroupOrEditTitleArgs());
-                },
-                backgroundColor: Colors.indigo[900],
-                label: const Text("Create Group",
-                    style: TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.w600)),
-                icon: const Icon(Icons.group, color: Colors.white),
+          stream: usersToTalkToController.stream(),
+          builder: (context, snapshot) {
+            return Padding(
+              padding: EdgeInsets.only(
+                  right: math.max(
+                      0,
+                      (MediaQuery.of(context).size.width - kPageContentWidth) /
+                          2)),
+              child: Visibility(
+                visible: snapshot.data?.isNotEmpty == true,
+                child: FloatingActionButton.extended(
+                  onPressed: () {
+                    Navigator.of(context).pushNamed(
+                        ScreenRoutes.createGroupOrEditTitle,
+                        arguments: CreateGroupOrEditTitleArgs());
+                  },
+                  backgroundColor: Colors.indigo[900],
+                  label: const Text("Create Group",
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.w600)),
+                  icon: const Icon(Icons.group, color: Colors.white),
+                ),
               ),
-            ),
-          );
-        },
-      ),
+            );
+          }),
     );
   }
 
